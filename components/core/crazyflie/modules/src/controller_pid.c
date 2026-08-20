@@ -4,7 +4,6 @@
 
 #include "attitude_controller.h"
 #include "sensfusion6.h"
-#include "position_controller.h"
 #include "controller_pid.h"
 
 #include "log.h"
@@ -32,7 +31,6 @@ static float accelz;
 void controllerPidInit(void)
 {
   attitudeControllerInit(ATTITUDE_UPDATE_DT);
-  positionControllerInit();
 }
 
 bool controllerPidTest(void)
@@ -75,11 +73,8 @@ void controllerPid(control_t *control, setpoint_t *setpoint,
     attitudeDesired.yaw = capAngle(attitudeDesired.yaw);
   }
 
-  if (RATE_DO_EXECUTE(POSITION_RATE, tick)) {
-    positionController(&actuatorThrust, &attitudeDesired, setpoint, state);
-  }
-
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
+    // esp-drone-lite: position controller removed, attitude/thrust setpoints only.
     // Switch between manual and automatic position control
     if (setpoint->mode.z == modeDisable) {
       actuatorThrust = setpoint->thrust;
@@ -147,7 +142,6 @@ void controllerPid(control_t *control, setpoint_t *setpoint,
     cmd_yaw = control->yaw;
 
     attitudeControllerResetAllPID();
-    positionControllerResetAllPID();
 
     // Reset the calculated YAW angle for rate control
     attitudeDesired.yaw = state->attitude.yaw;

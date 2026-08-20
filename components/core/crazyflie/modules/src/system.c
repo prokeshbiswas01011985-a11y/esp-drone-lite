@@ -37,7 +37,6 @@
 #include "param.h"
 #include "log.h"
 #include "ledseq.h"
-#include "adc_esp32.h"
 #include "pm_esplane.h"
 #include "config.h"
 #include "system.h"
@@ -55,14 +54,10 @@
 #include "commander.h"
 #include "console.h"
 #include "wifilink.h"
-#include "mem.h"
 //#include "proximity.h"
 //#include "watchdog.h"
 #include "queuemonitor.h"
-#include "buzzer.h"
-#include "sound.h"
 #include "sysload.h"
-#include "estimator_kalman.h"
 //#include "deck.h"
 //#include "extrx.h"
 #include "app.h"
@@ -137,10 +132,8 @@ void systemInit(void)
   configblockInit();
   //storageInit();
   workerInit();
-  adcInit();
   ledseqInit();
   pmInit();
-  buzzerInit();
 //  peerLocalizationInit();
 
 #ifdef APP_ENABLED
@@ -159,7 +152,6 @@ bool systemTest()
   DEBUG_PRINTI("pmTest = %d", pass);
   pass &= workerTest();
   DEBUG_PRINTI("workerTest = %d", pass);
-  pass &= buzzerTest();
   return pass;
 }
 
@@ -191,7 +183,6 @@ void systemTask(void *arg)
   commanderInit();
 
   StateEstimatorType estimator = anyEstimator;
-  estimatorKalmanTaskInit();
   //deckInit();
   //estimator = deckGetRequiredEstimator();
   stabilizerInit(estimator);
@@ -199,8 +190,6 @@ void systemTask(void *arg)
   //{
   //  platformSetLowInterferenceRadioMode();
   //}
-  soundInit();
-  memInit();
 
 #ifdef PROXIMITY_ENABLED
   proximityInit();
@@ -220,13 +209,7 @@ void systemTask(void *arg)
   DEBUG_PRINTI("commanderTest = %d ", pass);
   pass &= stabilizerTest();
   DEBUG_PRINTI("stabilizerTest = %d ", pass);
-  pass &= estimatorKalmanTaskTest();
-  DEBUG_PRINTI("estimatorKalmanTaskTest = %d ", pass);
   //pass &= deckTest();
-  pass &= soundTest();
-  DEBUG_PRINTI("soundTest = %d ", pass);
-  pass &= memTest();
-  DEBUG_PRINTI("memTest = %d ", pass);
   //pass &= watchdogNormalStartTest();
   pass &= cfAssertNormalStartTest();
 //  pass &= peerLocalizationTest();
@@ -237,7 +220,6 @@ void systemTask(void *arg)
     selftestPassed = 1;
     systemStart();
     DEBUG_PRINTI("systemStart ! selftestPassed = %d", selftestPassed);
-    soundSetEffect(SND_STARTUP);
     ledseqRun(&seq_alive);
     ledseqRun(&seq_testPassed);
   }

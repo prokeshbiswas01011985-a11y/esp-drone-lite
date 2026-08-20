@@ -40,8 +40,6 @@
 #include "stabilizer.h"
 #include "sensors.h"
 #include "commander.h"
-#include "crtp_localization_service.h"
-#include "sitaw.h"
 #include "controller.h"
 #include "power_distribution.h"
 //#include "collision_avoidance.h"
@@ -192,13 +190,9 @@ void stabilizerInit(StateEstimatorType estimator)
     return;
 
   sensorsInit();
-  if (estimator == anyEstimator) {
-    estimator = deckGetRequiredEstimator();
-  }
   stateEstimatorInit(estimator);
   controllerInit(ControllerTypeAny);
   powerDistributionInit();
-  sitAwInit();
   //collisionAvoidanceInit();
   estimatorType = getStateEstimator();
   controllerType = getControllerType();
@@ -296,7 +290,6 @@ static void stabilizerTask(void* param)
       commanderGetSetpoint(&setpoint, &state);
       compressSetpoint();
 
-      sitAwUpdateSetpoint(&setpoint, &sensorData, &state);
       //collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
 
       controller(&control, &setpoint, &sensorData, &state, tick);

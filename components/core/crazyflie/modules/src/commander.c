@@ -31,7 +31,6 @@
 
 #include "commander.h"
 #include "crtp_commander.h"
-#include "crtp_commander_high_level.h"
 
 #include "cf_math.h"
 #include "param.h"
@@ -41,7 +40,6 @@
 static bool isInit;
 const static setpoint_t nullSetpoint;
 static setpoint_t tempSetpoint;
-static state_t lastState;
 const static int priorityDisable = COMMANDER_PRIORITY_DISABLE;
 
 static uint32_t lastUpdate;
@@ -64,7 +62,6 @@ void commanderInit(void)
   xQueueSend(priorityQueue, &priorityDisable, 0);
 
   crtpCommanderInit();
-  crtpCommanderHighLevelInit();
   lastUpdate = xTaskGetTickCount();
 
   isInit = true;
@@ -82,9 +79,6 @@ void commanderSetSetpoint(setpoint_t *setpoint, int priority)
     // This is a potential race but without effect on functionality
     xQueueOverwrite(setpointQueue, setpoint);
     xQueueOverwrite(priorityQueue, &priority);
-    // Send the high-level planner to idle so it will forget its current state
-    // and start over if we switch from low-level to high-level in the future.
-    crtpCommanderHighLevelStop();
   }
 }
 
@@ -98,7 +92,6 @@ void commanderNotifySetpointsStop(int remainValidMillisecs)
   xQueuePeek(setpointQueue, &tempSetpoint, 0);
   tempSetpoint.timestamp = currentTime - timeSetback;
   xQueueOverwrite(setpointQueue, &tempSetpoint);
-  crtpCommanderHighLevelTellState(&lastState);
 }
 
 void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state)
@@ -108,12 +101,8 @@ void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state)
   uint32_t currentTime = xTaskGetTickCount();
 
   if ((currentTime - setpoint->timestamp) > COMMANDER_WDT_TIMEOUT_SHUTDOWN) {
-    if (enableHighLevel) {
-      crtpCommanderHighLevelGetSetpoint(setpoint, state);
-    }
-    if (!enableHighLevel || crtpCommanderHighLevelIsStopped()) {
-      memcpy(setpoint, &nullSetpoint, sizeof(nullSetpoint));
-    }
+    // esp-drone-lite: high-level commander removed, fall back to null setpoint.
+    memcpy(setpoint, &nullSetpoint, sizeof(nullSetpoint));
   } else if ((currentTime - setpoint->timestamp) > COMMANDER_WDT_TIMEOUT_STABILIZE) {
     xQueueOverwrite(priorityQueue, &priorityDisable);
     // Leveling ...
@@ -127,10 +116,7 @@ void commanderGetSetpoint(setpoint_t *setpoint, const state_t *state)
     setpoint->attitudeRate.yaw = 0;
     // Keep Z as it is
   }
-  // This copying is not strictly necessary because stabilizer.c already keeps
-  // a static state_t containing the most recent state estimate. However, it is
-  // not accessible by the public interface.
-  lastState = *state;
+  (void) state;
 }
 
 bool commanderTest(void)

@@ -3,7 +3,6 @@
 #include "cfassert.h"
 #include "estimator.h"
 #include "estimator_complementary.h"
-#include "estimator_kalman.h"
 #include "debug_cf.h"
 #define ESTIMATOR_NAME anyEstimator
 #define DEFAULT_ESTIMATOR complementaryEstimator
@@ -65,22 +64,6 @@ static EstimatorFcns estimatorFunctions[] = {
         .estimatorEnqueueYawError = NOT_IMPLEMENTED,
         //.estimatorEnqueueSweepAngles = NOT_IMPLEMENTED,
     },
-    {
-        .init = estimatorKalmanInit,
-        .deinit = NOT_IMPLEMENTED,
-        .test = estimatorKalmanTest,
-        .update = estimatorKalman,
-        .name = "Kalman",
-        .estimatorEnqueueTDOA = estimatorKalmanEnqueueTDOA,
-        .estimatorEnqueuePosition = estimatorKalmanEnqueuePosition,
-        .estimatorEnqueuePose = estimatorKalmanEnqueuePose,
-        .estimatorEnqueueDistance = estimatorKalmanEnqueueDistance,
-        .estimatorEnqueueTOF = estimatorKalmanEnqueueTOF,
-        .estimatorEnqueueAbsoluteHeight = estimatorKalmanEnqueueAbsoluteHeight,
-        .estimatorEnqueueFlow = estimatorKalmanEnqueueFlow,
-        .estimatorEnqueueYawError = estimatorKalmanEnqueueYawError,
-        //.estimatorEnqueueSweepAngles = estimatorKalmanEnqueueSweepAngles,
-    },
 };
 
 bool registerRequiredEstimator(StateEstimatorType estimator)
@@ -115,6 +98,9 @@ void stateEstimatorSwitchTo(StateEstimatorType estimator) {
   if (estimator < 0 || estimator >= StateEstimatorTypeCount) {
     return;
   }
+
+  // esp-drone-lite: only the complementary estimator is available.
+  ASSERT(estimator == anyEstimator || estimator == complementaryEstimator);
 
   StateEstimatorType newEstimator = estimator;
 

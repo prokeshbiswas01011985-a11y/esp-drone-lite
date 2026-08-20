@@ -101,13 +101,15 @@ void setCommandermode(FlightMode mode){
     altHoldMode = true;
     posHoldMode = true;
     posSetMode = false;
-    registerRequiredEstimator(kalmanEstimator); 
+    // esp-drone-lite: kalman removed, position hold unavailable
+    registerRequiredEstimator(complementaryEstimator); 
     break;
   case POSSET_MODE:
     altHoldMode = false;
     posHoldMode = false;
     posSetMode = true;
-    registerRequiredEstimator(kalmanEstimator); 
+    // esp-drone-lite: kalman removed, position set unavailable
+    registerRequiredEstimator(complementaryEstimator); 
     break;
   default:
     altHoldMode = false;

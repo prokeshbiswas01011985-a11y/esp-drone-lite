@@ -38,7 +38,6 @@
 #include  "wifi_esp32.h"
 #include "wifilink.h"
 #include "platformservice.h"
-#include "crtp_localization_service.h"
 
 static bool isInit;
 
