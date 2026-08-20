@@ -1,0 +1,3 @@
+baseline (upstream esp-drone, esp32s2, IDF v5.0.8)
+ESPDrone.bin: 869600 bytes (0xd44e0)
+ESPDrone.map: 8531348 bytes

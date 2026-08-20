@@ -1,4 +1,4 @@
 dependencies:
-  espressif/esp-now: "*"
+  # esp-drone-lite: esp-now dependency removed (WiFi UDP CRTP only)
   idf:
     version: ">=4.1.0"
