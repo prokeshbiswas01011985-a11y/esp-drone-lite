@@ -1,0 +1,3 @@
+pruned (esp-drone-lite, esp32s2, IDF v5.0.8, after Task 7 residue cleanup)
+ESPDroneLite.bin: 739200 bytes (0xb4780)
+ESPDroneLite.map: 7818870 bytes

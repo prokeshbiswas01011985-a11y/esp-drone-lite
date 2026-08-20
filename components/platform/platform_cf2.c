@@ -35,7 +35,7 @@ static platformConfig_t configs[] = {
     {
         .deviceType = "ED12",
         .deviceTypeName = "ESP_Drone_v1_2",
-        .sensorImplementation = SensorImplementation_mpu6050_HMC5883L_MS5611,
+        .sensorImplementation = SensorImplementation_mpu6050,
         .physicalLayoutAntennasAreClose = false,
         .motorMap = motorMapDefaultBrushed,
     },

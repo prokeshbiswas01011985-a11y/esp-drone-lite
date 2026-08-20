@@ -28,7 +28,7 @@
 
 #define PLATFORM_DEVICE_TYPE_STRING_MAX_LEN (32 + 1)
 #define PLATFORM_DEVICE_TYPE_MAX_LEN (4 + 1)
-#define SENSOR_INCLUDED_MPU6050_HMC5883L_MS5611
+#define SENSOR_INCLUDED_MPU6050
 
 typedef enum {
 #ifdef SENSOR_INCLUDED_BMI088_BMP388
@@ -43,8 +43,8 @@ typedef enum {
     SensorImplementation_mpu9250_lps25h,
 #endif
 
-#ifdef SENSOR_INCLUDED_MPU6050_HMC5883L_MS5611
-    SensorImplementation_mpu6050_HMC5883L_MS5611,
+#ifdef SENSOR_INCLUDED_MPU6050
+    SensorImplementation_mpu6050,
 #endif
 
 #ifdef SENSOR_INCLUDED_BOSCH

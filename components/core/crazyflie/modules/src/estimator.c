@@ -18,7 +18,7 @@ typedef struct {
   bool (*test)(void);
   void (*update)(state_t *state, sensorData_t *sensors, control_t *control, const uint32_t tick);
   const char* name;
-  bool (*estimatorEnqueueTDOA)(const tdoaMeasurement_t *uwb);
+  // esp-drone-lite: estimatorEnqueueTDOA removed (UWB positioning deleted)
   bool (*estimatorEnqueuePosition)(const positionMeasurement_t *pos);
   bool (*estimatorEnqueuePose)(const poseMeasurement_t *pose);
   bool (*estimatorEnqueueDistance)(const distanceMeasurement_t *dist);
@@ -38,7 +38,6 @@ static EstimatorFcns estimatorFunctions[] = {
         .test = NOT_IMPLEMENTED,
         .update = NOT_IMPLEMENTED,
         .name = "None",
-        .estimatorEnqueueTDOA = NOT_IMPLEMENTED,
         .estimatorEnqueuePosition = NOT_IMPLEMENTED,
         .estimatorEnqueuePose = NOT_IMPLEMENTED,
         .estimatorEnqueueDistance = NOT_IMPLEMENTED,
@@ -54,7 +53,6 @@ static EstimatorFcns estimatorFunctions[] = {
         .test = estimatorComplementaryTest,
         .update = estimatorComplementary,
         .name = "Complementary",
-        .estimatorEnqueueTDOA = NOT_IMPLEMENTED,
         .estimatorEnqueuePosition = NOT_IMPLEMENTED,
         .estimatorEnqueuePose = NOT_IMPLEMENTED,
         .estimatorEnqueueDistance = NOT_IMPLEMENTED,
@@ -151,13 +149,7 @@ const char* stateEstimatorGetName() {
 }
 
 
-bool estimatorEnqueueTDOA(const tdoaMeasurement_t *uwb) {
-  if (estimatorFunctions[currentEstimator].estimatorEnqueueTDOA) {
-    return estimatorFunctions[currentEstimator].estimatorEnqueueTDOA(uwb);
-  }
-
-  return false;
-}
+// esp-drone-lite: estimatorEnqueueTDOA removed (UWB positioning deleted)
 
 bool estimatorEnqueueYawError(const yawErrorMeasurement_t* error) {
   if (estimatorFunctions[currentEstimator].estimatorEnqueueYawError) {

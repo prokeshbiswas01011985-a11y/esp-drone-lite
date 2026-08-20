@@ -52,7 +52,7 @@
   #include "sensors_bosch.h"
 #endif
 
-#ifdef SENSOR_INCLUDED_MPU6050_HMC5883L_MS5611
+#ifdef SENSOR_INCLUDED_MPU6050
 #include "sensors_mpu6050.h"
 #endif
 
@@ -112,20 +112,20 @@ static const sensorsImplementation_t sensorImplementations[SensorImplementation_
     .dataAvailableCallback = sensorsBmi088SpiBmp388DataAvailableCallback,
   },
 #endif
-#ifdef SENSOR_INCLUDED_MPU6050_HMC5883L_MS5611
+#ifdef SENSOR_INCLUDED_MPU6050
   {
-    .implements = SensorImplementation_mpu6050_HMC5883L_MS5611,
-    .init = sensorsMpu6050Hmc5883lMs5611Init,
-    .test = sensorsMpu6050Hmc5883lMs5611Test,
-    .areCalibrated = sensorsMpu6050Hmc5883lMs5611AreCalibrated,
-    .manufacturingTest = sensorsMpu6050Hmc5883lMs5611ManufacturingTest,
-    .acquire = sensorsMpu6050Hmc5883lMs5611Acquire,
-    .waitDataReady = sensorsMpu6050Hmc5883lMs5611WaitDataReady,
-    .readGyro = sensorsMpu6050Hmc5883lMs5611ReadGyro,
-    .readAcc = sensorsMpu6050Hmc5883lMs5611ReadAcc,
-    .readMag = sensorsMpu6050Hmc5883lMs5611ReadMag,
-    .readBaro = sensorsMpu6050Hmc5883lMs5611ReadBaro,
-    .setAccMode = sensorsMpu6050Hmc5883lMs5611SetAccMode,
+    .implements = SensorImplementation_mpu6050,
+    .init = sensorsMpu6050Init,
+    .test = sensorsMpu6050Test,
+    .areCalibrated = sensorsMpu6050AreCalibrated,
+    .manufacturingTest = sensorsMpu6050ManufacturingTest,
+    .acquire = sensorsMpu6050Acquire,
+    .waitDataReady = sensorsMpu6050WaitDataReady,
+    .readGyro = sensorsMpu6050ReadGyro,
+    .readAcc = sensorsMpu6050ReadAcc,
+    .readMag = sensorsMpu6050ReadMag,
+    .readBaro = sensorsMpu6050ReadBaro,
+    .setAccMode = sensorsMpu6050SetAccMode,
     .dataAvailableCallback = nullFunction,
   }
 #endif

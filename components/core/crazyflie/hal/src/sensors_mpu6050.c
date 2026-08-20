@@ -141,8 +141,7 @@ static lpf2pData accLpf[3];
 static lpf2pData gyroLpf[3];
 static void applyAxis3fLpf(lpf2pData *data, Axis3f *in);
 
-static bool isBarometerPresent = false;
-static bool isMagnetometerPresent = false;
+// esp-drone-lite: magnetometer/barometer present flags removed (MPU6050 only)
 static bool isMpu6050TestPassed = false;
 
 // Pre-calculated values for accelerometer alignment
@@ -171,27 +170,27 @@ static bool sensorsFindBiasValue(BiasObj *bias);
 static void sensorsAccAlignToGravity(Axis3f *in, Axis3f *out);
 
 STATIC_MEM_TASK_ALLOC(sensorsTask, SENSORS_TASK_STACKSIZE);
-bool sensorsMpu6050Hmc5883lMs5611ReadGyro(Axis3f *gyro)
+bool sensorsMpu6050ReadGyro(Axis3f *gyro)
 {
     return (pdTRUE == xQueueReceive(gyroDataQueue, gyro, 0));
 }
 
-bool sensorsMpu6050Hmc5883lMs5611ReadAcc(Axis3f *acc)
+bool sensorsMpu6050ReadAcc(Axis3f *acc)
 {
     return (pdTRUE == xQueueReceive(accelerometerDataQueue, acc, 0));
 }
 
-bool sensorsMpu6050Hmc5883lMs5611ReadMag(Axis3f *mag)
+bool sensorsMpu6050ReadMag(Axis3f *mag)
 {
     return (pdTRUE == xQueueReceive(magnetometerDataQueue, mag, 0));
 }
 
-bool sensorsMpu6050Hmc5883lMs5611ReadBaro(baro_t *baro)
+bool sensorsMpu6050ReadBaro(baro_t *baro)
 {
     return (pdTRUE == xQueueReceive(barometerDataQueue, baro, 0));
 }
 
-void sensorsMpu6050Hmc5883lMs5611Acquire(sensorData_t *sensors, const uint32_t tick)
+void sensorsMpu6050Acquire(sensorData_t *sensors, const uint32_t tick)
 {
     sensorsReadGyro(&sensors->gyro);
     sensorsReadAcc(&sensors->acc);
@@ -200,7 +199,7 @@ void sensorsMpu6050Hmc5883lMs5611Acquire(sensorData_t *sensors, const uint32_t t
     sensors->interruptTimestamp = sensorData.interruptTimestamp;
 }
 
-bool sensorsMpu6050Hmc5883lMs5611AreCalibrated()
+bool sensorsMpu6050AreCalibrated()
 {
     return gyroBiasFound;
 }
@@ -250,7 +249,7 @@ static void sensorsTask(void *param)
     }
 }
 
-void sensorsMpu6050Hmc5883lMs5611WaitDataReady(void)
+void sensorsMpu6050WaitDataReady(void)
 {
     xSemaphoreTake(dataReady, portMAX_DELAY);
 }
@@ -300,9 +299,6 @@ void processAccGyroMeasurements(const uint8_t *buffer)
 }
 static void sensorsDeviceInit(void)
 {
-    isMagnetometerPresent = false;
-    isBarometerPresent = false;
-
     // Wait for sensors to startup
     while (xTaskGetTickCount() < 2000){
         vTaskDelay(M2T(50));
@@ -475,7 +471,7 @@ static void sensorsInterruptInit(void)
 
 }
 
-void sensorsMpu6050Hmc5883lMs5611Init(void)
+void sensorsMpu6050Init(void)
 {
     if (isInit) {
         return;
@@ -488,7 +484,7 @@ void sensorsMpu6050Hmc5883lMs5611Init(void)
     isInit = true;
 }
 
-bool sensorsMpu6050Hmc5883lMs5611Test(void)
+bool sensorsMpu6050Test(void)
 {
 
     bool testStatus = true;
@@ -705,7 +701,7 @@ static bool sensorsFindBiasValue(BiasObj *bias)
     return foundBias;
 }
 
-bool sensorsMpu6050Hmc5883lMs5611ManufacturingTest(void)
+bool sensorsMpu6050ManufacturingTest(void)
 {
     bool testStatus = false;
     Axis3i16 g;
@@ -783,7 +779,7 @@ static void sensorsAccAlignToGravity(Axis3f *in, Axis3f *out)
  *
  *
  */
-void sensorsMpu6050Hmc5883lMs5611SetAccMode(accModes accMode)
+void sensorsMpu6050SetAccMode(accModes accMode)
 {
     switch (accMode)
     {
@@ -831,14 +827,10 @@ LOG_ADD(LOG_FLOAT, zVariance, &gyroBiasRunning.variance.z)
 LOG_GROUP_STOP(gyro)
 #endif
 
-//TODO:
 PARAM_GROUP_START(imu_sensors)
-PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, HMC5883L, &isMagnetometerPresent)
-PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, MS5611, &isBarometerPresent) // TODO: Rename MS5611 to LPS25H. Client needs to be updated at the same time.
+// esp-drone-lite: HMC5883L/MS5611 params removed (MPU6050 only)
 PARAM_GROUP_STOP(imu_sensors)
 
 PARAM_GROUP_START(imu_tests)
 PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, mpu6050, &isMpu6050TestPassed)
-PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, HMC5883L, &isMagnetometerPresent)
-PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, MS5611, &isBarometerPresent) // TODO: Rename MS5611 to LPS25H. Client needs to be updated at the same time.
 PARAM_GROUP_STOP(imu_tests)

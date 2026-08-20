@@ -107,14 +107,7 @@
 #define ZRANGER_TASK_PRI        5
 #define SENSORS_TASK_PRI        6
 #define STABILIZER_TASK_PRI     7
-#define KALMAN_TASK_PRI         4
-
-// the kalman filter consumes a lot of CPU
-// for single core systems, we need to lower the priority
-#if CONFIG_FREERTOS_UNICORE
-  #undef KALMAN_TASK_PRI
-  #define KALMAN_TASK_PRI         1
-#endif
+// esp-drone-lite: KALMAN_TASK_PRI removed (Kalman estimator deleted)
 
 // Task names
 #define CMD_HIGH_LEVEL_TASK_NAME "CMDHL"
@@ -122,7 +115,6 @@
 #define CRTP_TX_TASK_NAME       "CRTP-TX"
 #define EXTRX_TASK_NAME         "EXTRX"
 #define FLOW_TASK_NAME          "FLOW"
-#define KALMAN_TASK_NAME        "KALMAN"
 #define LEDSEQCMD_TASK_NAME     "LEDSEQCMD"
 #define LOG_TASK_NAME           "LOG"
 #define MEM_TASK_NAME           "MEM"
@@ -148,7 +140,6 @@
 #define CRTP_TX_TASK_STACKSIZE        (3 * configBASE_STACK_SIZE)
 #define EXTRX_TASK_STACKSIZE          (1 * configBASE_STACK_SIZE)
 #define FLOW_TASK_STACKSIZE           (3 * configBASE_STACK_SIZE)
-#define KALMAN_TASK_STACKSIZE         (3 * configBASE_STACK_SIZE)
 #define LEDSEQCMD_TASK_STACKSIZE      (2 * configBASE_STACK_SIZE)
 #define LOG_TASK_STACKSIZE            (3 * configBASE_STACK_SIZE)
 #define MEM_TASK_STACKSIZE            (2 * configBASE_STACK_SIZE)

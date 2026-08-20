@@ -33,7 +33,6 @@
                 "./modules/src/worker.c"
                 "./utils/src/abort.c"
                 "./utils/src/cfassert.c"
-                "./utils/src/clockCorrectionEngine.c"
                 "./utils/src/configblockeeprom.c"
                 "./utils/src/cpuid.c"
                 "./utils/src/crc_bosch.c"

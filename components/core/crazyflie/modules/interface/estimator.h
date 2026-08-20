@@ -44,7 +44,7 @@ StateEstimatorType getStateEstimator(void);
 const char* stateEstimatorGetName();
 
 // Support to incorporate additional sensors into the state estimate via the following functions:
-bool estimatorEnqueueTDOA(const tdoaMeasurement_t *uwb);
+// esp-drone-lite: estimatorEnqueueTDOA removed (UWB positioning deleted)
 bool estimatorEnqueuePosition(const positionMeasurement_t *pos);
 bool estimatorEnqueuePose(const poseMeasurement_t *pose);
 bool estimatorEnqueueDistance(const distanceMeasurement_t *dist);

@@ -83,11 +83,7 @@ typedef struct quaternion_s {
   };
 } quaternion_t;
 
-typedef struct tdoaMeasurement_s {
-  point_t anchorPosition[2];
-  float distanceDiff;
-  float stdDev;
-} tdoaMeasurement_t;
+// esp-drone-lite: tdoaMeasurement_t removed (UWB positioning deleted)
 
 typedef struct baro_s {
   float pressure;           // mbar
