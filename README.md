@@ -1,51 +1,50 @@
+# ESP-Drone Lite
 
-## ESP-Drone
+> **中文**：本项目基于 [espressif/esp-drone](https://github.com/espressif/esp-drone)（GPL-3.0）修改，2026-08 精简为仅自稳定飞行版本。
+>
+> **English**: This project is a derivative of [espressif/esp-drone](https://github.com/espressif/esp-drone) (GPL-3.0), pruned in 2026-08 to an attitude-stabilization-only firmware.
 
-* [中文](./README_cn.md)
+## 这是什么
 
-[![Build project](https://github.com/espressif/esp-drone/actions/workflows/build_project.yml/badge.svg)](https://github.com/espressif/esp-drone/actions/workflows/build_project.yml)
+ESP-Drone Lite 是一份**极简四轴自稳定固件**：
 
-### Introduction
+- 芯片：ESP32-S2
+- 传感器：仅 MPU6050（加速度计 + 陀螺仪）
+- 控制：互补滤波（sensfusion6）+ 姿态/角速率双环 PID + 电机混控
+- 链路：WiFi AP + UDP CRTP（端口 2390），兼容 cfclient / ESP-Drone App
 
-**ESP-Drone** is an open source solution based on Espressif ESP32/ESP32-S2/ESP32-S3 Wi-Fi chip, which can be controlled by a mobile APP or gamepad over **Wi-Fi** connection. ESP-Drone comes with **simple hardware**, **clear and extensible code architecture**, and therefore this project can be used in **STEAM education** and other fields. The main code is ported from **Crazyflie** open source project with **GPL3.0** protocol.
+相比上游，删除了 EKF/Kalman、INDI/Mellinger 控制器、定高/定点、光流/ToF/磁罗盘/气压计、deck 扩展板框架、dsp_lib 等全部非必需模块。完整删除清单见 [`docs/obsidian/05-裁剪记录.md`](docs/obsidian/05-裁剪记录.md)。
 
-> Currently support ESP32、ESP32S2、ESP32S3, please using ESP-IDF [release/v5.0](https://docs.espressif.com/projects/esp-idf/en/release-v5.0/esp32s2/get-started/index.html)  branch as your develop environment
+## 文档（Obsidian 文档库）
 
-![ESP-Drone](./docs/_static/espdrone_s2_v1_2_2.png)
+用 [Obsidian](https://obsidian.md) 打开 [`docs/obsidian`](docs/obsidian) 目录即可浏览，入口为 `00-总览.md`：
 
-For more information, please check the sections below:
-* **Getting Started**: [Getting Started](https://docs.espressif.com/projects/espressif-esp-drone/zh_CN/latest/gettingstarted.html)
-* **Hardware Schematic**：[Hardware](https://docs.espressif.com/projects/espressif-esp-drone/zh_CN/latest/_static/ESP32_S2_Drone_V1_2/SCH_Mainboard_ESP32_S2_Drone_V1_2.pdf)
-* **iOS APP Source code**: [ESP-Drone-iOS](https://github.com/EspressifApps/ESP-Drone-iOS)
-* **Android APP Source code**: [ESP-Drone-Android](https://github.com/EspressifApps/ESP-Drone-Android)
+| 笔记 | 内容 |
+|---|---|
+| 01-硬件与接线 | 引脚表、最小 BOM、电机驱动电路 |
+| 02-焊接步骤 | 分步焊接流程与检查点 |
+| 03-编译与烧录 | ESP-IDF v5.0 环境、编译、flash、WiFi 遥控 |
+| 04-架构说明 | 数据流 mermaid 图与任务结构 |
+| 05-裁剪记录 | 删除清单与体积对比 |
+| 06-协议声明 | GPL-3.0 义务与上游归属 |
 
-### Features
+## 快速开始
 
-1. Stabilize Mode
-2. Height-hold Mode
-3. Position-hold Mode
-4. APP Control
-5. cfclient Supported, refer https://github.com/leeebo/crazyflie-clients-python
-6. ESP-BOX3 Joystick Control (through esp-now)
+```powershell
+# ESP-IDF v5.0 环境激活后
+idf.py set-target esp32s2
+idf.py build
+idf.py -p COMx flash monitor
+```
 
-Note: to implement Height-hold/Position-hold mode, extension boards are needed. For more information, see Hardware Reference. 
+详见 [`docs/obsidian/03-编译与烧录.md`](docs/obsidian/03-编译与烧录.md)。
 
-### Third Party Copyrighted Code
+## 第三方归属
 
-Additional third party copyrighted code is included under the following licenses.
+| 来源 | 协议 | 说明 |
+|---|---|---|
+| [espressif/esp-drone](https://github.com/espressif/esp-drone) | GPL-3.0 | 直接上游（ESP32 移植、WiFi CRTP） |
+| [bitcraze/crazyflie-firmware](https://github.com/bitcraze/crazyflie-firmware) `tag_2021_01` | GPL-3.0 | 核心飞控代码来源 |
+| dsp_lib（CMSIS-DSP 移植） | — | **已完整删除**，不再分发 |
 
-| Component | License | Origin |Commit ID |
-| :---:  | :---: | :---: |:---: |
-| core/crazyflie | GPL3.0  |[Crazyflie](https://github.com/bitcraze/crazyflie-firmware/tree/2021.01) |tag_2021_01 b448553|
-| lib/dsp_lib |  | [esp32-lin](https://github.com/whyengineer/esp32-lin/tree/master/components/dsp_lib) |6fa39f4c|
-
-### Support Policy
-
-From December 2022, we will offer limited support on this project, but Pull Request is still welcomed!
-
-### THANKS
-
-1. Thanks to Bitcraze for the great [Crazyflie project](https://www.bitcraze.io/%20).
-2. Thanks to Espressif for the powerful [ESP-IDF framework](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/index.html).
-3. Thanks to WhyEngineer for the useful [ESP-DSP lib](https://github.com/whyengineer/esp32-lin/tree/master/components/dsp_lib).
-
+本项目按 GPL-3.0 分发，许可证见 [LICENSE](LICENSE)。所有修改过的源文件均保留原始版权头并标注修改说明（GPL-3.0 §5(a)）。
