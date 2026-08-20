@@ -29,15 +29,9 @@
 #include "debug_cf.h"
 
 /*to support different hardware platform */
+// esp-drone-lite: only ESP_Drone_v1_2 (ESP32-S2) is kept
 static platformConfig_t configs[] = {
 
-    {
-        .deviceType = "EP20",
-        .deviceTypeName = "ESPlane 2.0 ",
-        .sensorImplementation = SensorImplementation_mpu6050_HMC5883L_MS5611,
-        .physicalLayoutAntennasAreClose = false,
-        .motorMap = motorMapDefaultBrushed,
-    },
     {
         .deviceType = "ED12",
         .deviceTypeName = "ESP_Drone_v1_2",

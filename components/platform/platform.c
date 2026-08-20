@@ -81,8 +81,8 @@ int platformInitConfiguration(const platformConfig_t *configs, const int nrOfCon
 #ifndef DEVICE_TYPE_STRING_FORCE
     char deviceTypeString[PLATFORM_DEVICE_TYPE_STRING_MAX_LEN];
     char deviceType[PLATFORM_DEVICE_TYPE_MAX_LEN];
-    platformGetDeviceTypeString(deviceTypeString);  //"0;EP20"
-    platformParseDeviceTypeString(deviceTypeString, deviceType); //deviceType="EP20"
+    platformGetDeviceTypeString(deviceTypeString);  //"0;ED12"
+    platformParseDeviceTypeString(deviceTypeString, deviceType); //deviceType="ED12"
 #else
 #define xstr(s) str(s)
 #define str(s) #s
