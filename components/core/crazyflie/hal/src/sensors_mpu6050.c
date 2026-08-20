@@ -25,6 +25,8 @@
  * Implements HAL for sensors MPU9250 and LPS25H
  *
  * 2016.06.15: Initial version by Mike Hamer, http://mikehamer.info
+ *
+ * Modified for esp-drone-lite: HMC5883L/MS5611 support removed (2026-08).
  */
 #include <math.h>
 
@@ -37,7 +39,7 @@
 #include "esp_timer.h"
 #include "driver/gpio.h"
 
-#include "sensors_mpu6050_hm5883L_ms5611.h"
+#include "sensors_mpu6050.h"
 #include "system.h"
 #include "configblock.h"
 #include "param.h"
@@ -46,25 +48,15 @@
 #include "imu.h"
 #include "nvicconf.h"
 #include "ledseq.h"
-#include "sound.h"
 #include "filter.h"
 #include "config.h"
 #include "stm32_legacy.h"
 
 #include "i2cdev.h"
-// #include "lps25h.h"
 #include "mpu6050.h"
-#include "hmc5883l.h"
-#include "ms5611.h"
-// #include "ak8963.h"
-#include "zranger.h"
-#include "zranger2.h"
-#include "vl53l1x.h"
-#include "flowdeck_v1v2.h"
 #define DEBUG_MODULE "SENSORS"
 #include "debug_cf.h"
 #include "static_mem.h"
-#include "crtp_commander.h"
 
 /**
  * Enable 250Hz digital LPF mode. However does not work with
@@ -73,17 +65,6 @@
 //#define SENSORS_mpu6050_DLPF_256HZ
 
 //#define GYRO_ADD_RAW_AND_VARIANCE_LOG_VALUES
-
-#define MAG_GAUSS_PER_LSB 666.7f
-
-/**
- * Enable sensors on board 
- */
-// #define SENSORS_ENABLE_MAG_HM5883L
-// #define SENSORS_ENABLE_PRESSURE_MS5611
-//#define SENSORS_ENABLE_RANGE_VL53L0X
-#define SENSORS_ENABLE_RANGE_VL53L1X
-#define SENSORS_ENABLE_FLOW_PMW3901
 
 #define SENSORS_GYRO_FS_CFG MPU6050_GYRO_FS_2000
 #define SENSORS_DEG_PER_LSB_CFG MPU6050_DEG_PER_LSB_2000
@@ -98,13 +79,9 @@
 #define SENSORS_ACC_SCALE_SAMPLES 200
 #define SENSORS_GYRO_BIAS_CALCULATE_STDDEV
 
-// Buffer length for MPU9250 slave reads
+// Buffer length for MPU6050 reads
 #define GPIO_INTA_MPU6050_IO CONFIG_MPU_PIN_INT
 #define SENSORS_MPU6050_BUFF_LEN 14
-#define SENSORS_MAG_BUFF_LEN 8
-#define SENSORS_BARO_BUFF_S_P_LEN MS5611_D1D2_SIZE
-#define SENSORS_BARO_BUFF_T_LEN MS5611_D1D2_SIZE
-#define SENSORS_BARO_BUFF_LEN (SENSORS_BARO_BUFF_S_P_LEN + SENSORS_BARO_BUFF_T_LEN)
 
 #define GYRO_NBR_OF_AXES 3
 #define GYRO_MIN_BIAS_TIMEOUT_MS M2T(1 * 1000)
@@ -166,22 +143,7 @@ static void applyAxis3fLpf(lpf2pData *data, Axis3f *in);
 
 static bool isBarometerPresent = false;
 static bool isMagnetometerPresent = false;
-#ifdef SENSORS_ENABLE_RANGE_VL53L1X
-static bool isVl53l1xPresent = false;
-#endif
-#ifdef SENSORS_ENABLE_RANGE_VL53L0X
-static bool isVl53l0xPresent = false;
-#endif
-#ifdef SENSORS_ENABLE_FLOW_PMW3901
-static bool isPmw3901Present = false;
-#endif
 static bool isMpu6050TestPassed = false;
-#ifdef SENSORS_ENABLE_MAG_HM5883L
-static bool isHmc5883lTestPassed = false;
-#endif
-#ifdef SENSORS_ENABLE_PRESSURE_MS5611
-static bool isMs5611TestPassed = false;
-#endif
 
 // Pre-calculated values for accelerometer alignment
 float cosPitch;
@@ -190,11 +152,9 @@ float cosRoll;
 float sinRoll;
 
 // This buffer needs to hold data from all sensors
-static uint8_t buffer[SENSORS_MPU6050_BUFF_LEN + SENSORS_MAG_BUFF_LEN + SENSORS_BARO_BUFF_LEN] = {0};
+static uint8_t buffer[SENSORS_MPU6050_BUFF_LEN] = {0};
 
 static void processAccGyroMeasurements(const uint8_t *buffer);
-static void processMagnetometerMeasurements(const uint8_t *buffer);
-static void processBarometerMeasurements(const uint8_t *buffer);
 static void sensorsSetupSlaveRead(void);
 
 #ifdef GYRO_GYRO_BIAS_LIGHT_WEIGHT
@@ -261,33 +221,25 @@ static void sensorsTask(void *param)
             sensorData.interruptTimestamp = imuIntTimestamp;
 
             /* sensors step 1-read data from I2C */
-            uint8_t dataLen = (uint8_t)(SENSORS_MPU6050_BUFF_LEN +
-                                        (isMagnetometerPresent ? SENSORS_MAG_BUFF_LEN : 0) +
-                                        (isBarometerPresent ? SENSORS_BARO_BUFF_LEN : 0));
-            i2cdevReadReg8(I2C0_DEV, MPU6050_ADDRESS_AD0_LOW, MPU6050_RA_ACCEL_XOUT_H, dataLen, buffer);
+            i2cdevReadReg8(I2C0_DEV, MPU6050_ADDRESS_AD0_LOW, MPU6050_RA_ACCEL_XOUT_H, SENSORS_MPU6050_BUFF_LEN, buffer);
 
             /* sensors step 2-process the respective data */
             processAccGyroMeasurements(&(buffer[0]));
 
-            if (isMagnetometerPresent) {
-                processMagnetometerMeasurements(&(buffer[SENSORS_MPU6050_BUFF_LEN]));
-            }
-
-            if (isBarometerPresent) {
-                processBarometerMeasurements(&(buffer[isMagnetometerPresent ? SENSORS_MPU6050_BUFF_LEN + SENSORS_MAG_BUFF_LEN : SENSORS_MPU6050_BUFF_LEN]));
-            }
+            // esp-drone-lite: no magnetometer/barometer on board, publish
+            // constant defaults so the baro/mag LOG groups keep a valid source.
+            sensorData.mag.x = 0.0f;
+            sensorData.mag.y = 0.0f;
+            sensorData.mag.z = 0.0f;
+            sensorData.baro.asl = 0.0f;
+            sensorData.baro.temperature = 25.0f;
+            sensorData.baro.pressure = 1013.25f;
 
             /* sensors step 3- queue sensors data  on the output queues */
             xQueueOverwrite(accelerometerDataQueue, &sensorData.acc);
             xQueueOverwrite(gyroDataQueue, &sensorData.gyro);
-
-            if (isMagnetometerPresent) {
-                xQueueOverwrite(magnetometerDataQueue, &sensorData.mag);
-            }
-
-            if (isBarometerPresent) {
-                xQueueOverwrite(barometerDataQueue, &sensorData.baro);
-            }
+            xQueueOverwrite(magnetometerDataQueue, &sensorData.mag);
+            xQueueOverwrite(barometerDataQueue, &sensorData.baro);
 
             /* sensors step 4- Unlock stabilizer task */
             xSemaphoreGive(dataReady);
@@ -303,55 +255,12 @@ void sensorsMpu6050Hmc5883lMs5611WaitDataReady(void)
     xSemaphoreTake(dataReady, portMAX_DELAY);
 }
 
-void processBarometerMeasurements(const uint8_t *buffer)
-{
-    //TODO: replace it to MS5611
-    DEBUG_PRINTW("processBarometerMeasurements NEED TODO");
-//   static uint32_t rawPressure = 0;
-//   static int16_t rawTemp = 0;
-
-// Check if there is a new pressure update
-
-// Check if there is a new temp update
-
-//   sensorData.baro.pressure = (float) rawPressure / LPS25H_LSB_PER_MBAR;
-//   sensorData.baro.temperature = LPS25H_TEMP_OFFSET + ((float) rawTemp / LPS25H_LSB_PER_CELSIUS);
-//   sensorData.baro.asl = lps25hPressureToAltitude(&sensorData.baro.pressure);
-}
-
-void processMagnetometerMeasurements(const uint8_t *buffer)
-{
-    //TODO: replace it to hmc5883l
-    if (buffer[7] & (1 << HMC5883L_STATUS_READY_BIT)) {
-        int16_t headingx = (((int16_t)buffer[2]) << 8) | buffer[1]; //hmc5883 different from
-        int16_t headingz = (((int16_t)buffer[4]) << 8) | buffer[3];
-        int16_t headingy = (((int16_t)buffer[6]) << 8) | buffer[5];
-
-        sensorData.mag.x = (float)headingx / MAG_GAUSS_PER_LSB; //to gauss
-        sensorData.mag.y = (float)headingy / MAG_GAUSS_PER_LSB;
-        sensorData.mag.z = (float)headingz / MAG_GAUSS_PER_LSB;
-        DEBUG_PRINTI("hmc5883l DATA ready");
-    } else {
-
-        DEBUG_PRINTW("hmc5883l DATA not ready");
-    }
-}
-
 void processAccGyroMeasurements(const uint8_t *buffer)
 {
     /*  Note the ordering to correct the rotated 90º IMU coordinate system */
 
     Axis3f accScaled;
 
-#ifdef CONFIG_TARGET_ESPLANE_V1
-    /* sensors step 2.1 read from buffer */
-    accelRaw.x = (((int16_t)buffer[0]) << 8) | buffer[1];
-    accelRaw.y = (((int16_t)buffer[2]) << 8) | buffer[3];
-    accelRaw.z = (((int16_t)buffer[4]) << 8) | buffer[5];
-    gyroRaw.x = (((int16_t)buffer[8]) << 8) | buffer[9];
-    gyroRaw.y = (((int16_t)buffer[10]) << 8) | buffer[11];
-    gyroRaw.z = (((int16_t)buffer[12]) << 8) | buffer[13];
-#else
     /* sensors step 2.1 read from buffer */
     accelRaw.y = (((int16_t)buffer[0]) << 8) | buffer[1];
     accelRaw.x = (((int16_t)buffer[2]) << 8) | buffer[3];
@@ -359,7 +268,6 @@ void processAccGyroMeasurements(const uint8_t *buffer)
     gyroRaw.y = (((int16_t)buffer[8]) << 8) | buffer[9];
     gyroRaw.x = (((int16_t)buffer[10]) << 8) | buffer[11];
     gyroRaw.z = (((int16_t)buffer[12]) << 8) | buffer[13];
-#endif
 
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
     gyroBiasFound = processGyroBiasNoBuffer(gyroRaw.x, gyroRaw.y, gyroRaw.z, &gyroBias);
@@ -374,22 +282,14 @@ void processAccGyroMeasurements(const uint8_t *buffer)
     }
 
     /* sensors step 2.4 convert  digtal value to physical angle */
-#ifdef CONFIG_TARGET_ESPLANE_V1
-    sensorData.gyro.x = (gyroRaw.x - gyroBias.x) * SENSORS_DEG_PER_LSB_CFG;
-#else
     sensorData.gyro.x = -(gyroRaw.x - gyroBias.x) * SENSORS_DEG_PER_LSB_CFG;
-#endif
 
     sensorData.gyro.y = (gyroRaw.y - gyroBias.y) * SENSORS_DEG_PER_LSB_CFG;
     sensorData.gyro.z = (gyroRaw.z - gyroBias.z) * SENSORS_DEG_PER_LSB_CFG;
     /* sensors step 2.5 low pass filter */
     applyAxis3fLpf((lpf2pData *)(&gyroLpf), &sensorData.gyro);
 
-#ifdef CONFIG_TARGET_ESPLANE_V1
-    accScaled.x = (accelRaw.x) * SENSORS_G_PER_LSB_CFG / accScale;
-#else
-    accScaled.x = -(accelRaw.x) * SENSORS_G_PER_LSB_CFG / accScale;   
-#endif
+    accScaled.x = -(accelRaw.x) * SENSORS_G_PER_LSB_CFG / accScale;
 
     accScaled.y = (accelRaw.y) * SENSORS_G_PER_LSB_CFG / accScale;
     accScaled.z = (accelRaw.z) * SENSORS_G_PER_LSB_CFG / accScale;
@@ -472,70 +372,6 @@ static void sensorsDeviceInit(void)
     }
 #endif
 
-#ifdef SENSORS_ENABLE_MAG_HM5883L
-    hmc5883lInit(I2C0_DEV);
-
-    if (hmc5883lTestConnection() == true) {
-        isMagnetometerPresent = true;
-        hmc5883lSetMode(HMC5883L_MODE_CONTINUOUS); // 16bit 100Hz
-        DEBUG_PRINTI("hmc5883l I2C connection [OK].\n");
-    } else {
-        DEBUG_PRINTW("hmc5883l I2C connection [FAIL].\n");
-    }
-
-#endif
-#ifdef SENSORS_ENABLE_PRESSURE_MS5611
-    ms5611Init(I2C0_DEV);
-
-    if (false) {
-        isBarometerPresent = true;
-        DEBUG_PRINTI("MS5611 I2C connection [OK].\n");
-    } else {
-        //TODO: Should sensor test fail hard if no connection
-        DEBUG_PRINTW("MS5611 I2C connection [FAIL].\n");
-    }
-
-#endif
-
-#ifdef SENSORS_ENABLE_RANGE_VL53L1X
-    zRanger2Init();
-
-    if (zRanger2Test() == true) {
-        isVl53l1xPresent = true;
-        DEBUG_PRINTI("VL53L1X I2C connection [OK].\n");
-    } else {
-        //TODO: Should sensor test fail hard if no connection
-        DEBUG_PRINTW("VL53L1X I2C connection [FAIL].\n");
-    }
-
-#endif
-
-#ifdef SENSORS_ENABLE_RANGE_VL53L0X
-    zRangerInit();
-
-    if (zRangerTest() == true) {
-        isVl53l0xPresent = true;
-        DEBUG_PRINTI("VL53L0X I2C connection [OK].\n");
-    } else {
-        //TODO: Should sensor test fail hard if no connection
-        DEBUG_PRINTW("VL53L0X I2C connection [FAIL].\n");
-    }
-
-#endif
-
-#ifdef SENSORS_ENABLE_FLOW_PMW3901
-    flowdeck2Init();
-
-    if (flowdeck2Test() == true) {
-        isPmw3901Present = true;
-        setCommandermode(POSHOLD_MODE);
-        DEBUG_PRINTI("PMW3901 SPI connection [OK].\n");
-    } else {
-        //TODO: Should sensor test fail hard if no connection
-        DEBUG_PRINTW("PMW3901 SPI connection [FAIL].\n");
-    }
-#endif
-
     DEBUG_PRINTI("sensors init done");
     /*
     *get calib angle from NVS
@@ -571,41 +407,7 @@ static void sensorsSetupSlaveRead(void)
     mpu6050SetSlaveReadWriteTransitionEnabled(false); // Send a stop at the end of a slave read
     mpu6050SetMasterClockSpeed(13);                   // Set i2c speed to 400kHz
 
-#ifdef SENSORS_ENABLE_MAG_HM5883L
-
-    if (isMagnetometerPresent) {
-        // Set registers for mpu6050 master to read from
-        mpu6050SetSlaveAddress(0, 0x80 | HMC5883L_ADDRESS);        // set the magnetometer to Slave 0, enable read
-        mpu6050SetSlaveRegister(0, HMC5883L_RA_MODE);       // read the magnetometer heading register
-        mpu6050SetSlaveDataLength(0, SENSORS_MAG_BUFF_LEN); // hmc5883l:model,x,z,y,status ak8963:read 8 bytes (ST1, x, y, z heading, ST2 (overflow check))
-        mpu6050SetSlaveDelayEnabled(0, true);
-        mpu6050SetSlaveEnabled(0, true);
-        DEBUG_PRINTD("mpu6050SetSlaveAddress HMC5883L done \n");
-    }
-
-#endif
-
-#ifdef SENSORS_ENABLE_PRESSURE_MS5611
-
-    if (isBarometerPresent) {
-        // Configure the LPS25H as a slave and enable read
-        // Setting up two reads works for LPS25H fifo avg filter as well as the
-        // auto inc wraps back to LPS25H_PRESS_OUT_L after LPS25H_PRESS_OUT_H is read.
-        mpu6050SetSlaveAddress(1, 0x80 | MS5611_ADDR_CSB_LOW);
-        mpu6050SetSlaveRegister(1, MS5611_D1);
-        mpu6050SetSlaveDataLength(1, MS5611_D1D2_SIZE);
-        mpu6050SetSlaveDelayEnabled(1, true);
-        mpu6050SetSlaveEnabled(1, true);
-
-        mpu6050SetSlaveAddress(2, 0x80 | MS5611_ADDR_CSB_LOW); //temperature
-        mpu6050SetSlaveRegister(2, MS5611_D2);
-        mpu6050SetSlaveDataLength(2, MS5611_D1D2_SIZE);
-        mpu6050SetSlaveDelayEnabled(2, true);
-        mpu6050SetSlaveEnabled(2, true);
-        DEBUG_PRINTD("mpu6050SetSlaveAddress MS5611 done \n");
-    }
-
-#endif
+    // esp-drone-lite: no magnetometer/barometer slave, MPU6050 only
 
     // Enable sensors after configuration
     mpu6050SetI2CMasterModeEnabled(true);
@@ -708,26 +510,7 @@ bool sensorsMpu6050Hmc5883lMs5611Test(void)
 
     testStatus &= isMpu6050TestPassed;
 
-#ifdef SENSORS_ENABLE_MAG_HM5883L
-    testStatus &= isMagnetometerPresent;
-
-    if (testStatus) {
-        isHmc5883lTestPassed = hmc5883lSelfTest();
-        testStatus &= isHmc5883lTestPassed;
-    }
-
-#endif
-
-#ifdef SENSORS_ENABLE_PRESSURE_MS5611
-    testStatus &= isBarometerPresent;
-
-    if (testStatus) {
-        isMs5611TestPassed = ms5611SelfTest();
-
-        testStatus &= isMs5611TestPassed;
-    }
-
-#endif
+    // esp-drone-lite: HMC5883L/MS5611 self tests removed
 
     return testStatus;
 
@@ -810,8 +593,7 @@ static bool processGyroBias(int16_t gx, int16_t gy, int16_t gz, Axis3f *gyroBias
         sensorsFindBiasValue(&gyroBiasRunning);
 
         if (gyroBiasRunning.isBiasValueFound) {
-            //TODO:
-            soundSetEffect(SND_CALIB);
+            // esp-drone-lite: buzzer/sound removed
             ledseqRun(&seq_calibrated);
             DEBUG_PRINTI("isBiasValueFound!");
         }
@@ -1058,6 +840,5 @@ PARAM_GROUP_STOP(imu_sensors)
 PARAM_GROUP_START(imu_tests)
 PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, mpu6050, &isMpu6050TestPassed)
 PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, HMC5883L, &isMagnetometerPresent)
-PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, pmw3901, &isPmw3901Present)
 PARAM_ADD(PARAM_UINT8 | PARAM_RONLY, MS5611, &isBarometerPresent) // TODO: Rename MS5611 to LPS25H. Client needs to be updated at the same time.
 PARAM_GROUP_STOP(imu_tests)

@@ -1,7 +1,7 @@
 ﻿idf_component_register(SRCS "./hal/src/freeRTOSdebug.c" 
                 "./hal/src/ledseq.c" 
                 "./hal/src/pm_esplane.c" 
-                "./hal/src/sensors_mpu6050_hm5883L_ms5611.c" 
+                "./hal/src/sensors_mpu6050.c"
                 "./hal/src/sensors.c" 
                 "./hal/src/usec_time.c" 
                 "./hal/src/wifilink.c"

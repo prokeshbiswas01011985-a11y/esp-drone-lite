@@ -53,7 +53,7 @@
 #endif
 
 #ifdef SENSOR_INCLUDED_MPU6050_HMC5883L_MS5611
-#include "sensors_mpu6050_hm5883L_ms5611.h"
+#include "sensors_mpu6050.h"
 #endif
 
 typedef struct {

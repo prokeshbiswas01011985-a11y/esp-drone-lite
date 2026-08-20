@@ -23,6 +23,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  * pm.c - Power Management driver and functions.
+ *
+ * Modified for esp-drone-lite: ADC/sound/syslink battery measurement removed,
+ * battery voltage fixed to a nominal value (2026-08).
  */
 
 #include <string.h>
@@ -34,14 +37,11 @@
 #include "config.h"
 #include "system.h"
 #include "pm_esplane.h"
-#include "adc_esp32.h"
 #include "led.h"
 #include "log.h"
 #include "ledseq.h"
 #include "commander.h"
-#include "sound.h"
 #include "stm32_legacy.h"
-//#include "deck.h"
 #define DEBUG_MODULE "PM"
 #include "debug_cf.h"
 #include "static_mem.h"
@@ -72,13 +72,7 @@ static float     batteryVoltageMax = 0.0;
 
 static float     extBatteryVoltage;
 static uint16_t  extBatteryVoltageMV;
-static uint16_t extBatVoltDeckPin;
-static bool      isExtBatVoltDeckPinSet = false;
-static float     extBatVoltMultiplier;
 static float     extBatteryCurrent;
-static uint16_t extBatCurrDeckPin;
-static bool      isExtBatCurrDeckPinSet = false;
-static float     extBatCurrAmpPerVolt;
 
 #ifdef PM_SYSTLINK_INLCUDE_TEMP
 // nRF51 internal temp
@@ -117,8 +111,7 @@ void pmInit(void)
     return;
   }
 
-    pmEnableExtBatteryVoltMeasuring(CONFIG_ADC1_PIN, 2); // ADC1 PIN is fixed to ADC channel
-
+    // esp-drone-lite: ADC battery measurement removed
     pmSyslinkInfo.pgood = false;
     pmSyslinkInfo.chg = false;
     pmSyslinkInfo.vBat = 3.7f;
@@ -201,20 +194,9 @@ float pmGetBatteryVoltageMax(void)
   return batteryVoltageMax;
 }
 
-void pmSyslinkUpdate(SyslinkPacket *slp)
-{
-  if (slp->type == SYSLINK_PM_BATTERY_STATE) {
-    memcpy(&pmSyslinkInfo, &slp->data[0], sizeof(pmSyslinkInfo));
-    pmSetBatteryVoltage(pmSyslinkInfo.vBat);
-#ifdef PM_SYSTLINK_INLCUDE_TEMP
-    temp = pmSyslinkInfo.temp;
-#endif
-  }
-}
-
 void pmSetChargeState(PMChargeStates chgState)
 {
-  // TODO: Send syslink packafe with charge state
+  // esp-drone-lite: syslink removed, no charger to control
 }
 
 PMStates pmUpdateState()
@@ -248,48 +230,25 @@ PMStates pmUpdateState()
 
 void pmEnableExtBatteryCurrMeasuring(uint8_t pin, float ampPerVolt)
 {
-  extBatCurrDeckPin = pin;
-  isExtBatCurrDeckPinSet = true;
-  extBatCurrAmpPerVolt = ampPerVolt;
+  // esp-drone-lite: ADC removed, kept as no-op for API compatibility
 }
 
 float pmMeasureExtBatteryCurrent(void)
 {
-  float current;
-
-  if (isExtBatCurrDeckPinSet)
-  {
-    current = analogReadVoltage(extBatCurrDeckPin) * extBatCurrAmpPerVolt;
-  }
-  else
-  {
-    current = 0.0;
-  }
-
-  return current;
+  // esp-drone-lite: ADC removed, no external current measurement
+  return 0.0f;
 }
 
 void pmEnableExtBatteryVoltMeasuring(uint8_t pin, float multiplier)
 {
-  extBatVoltDeckPin = pin;
-  isExtBatVoltDeckPinSet = true;
-  extBatVoltMultiplier = multiplier;
+  // esp-drone-lite: ADC removed, kept as no-op for API compatibility
 }
 
 float pmMeasureExtBatteryVoltage(void)
 {
-  float voltage;
-
-  if (isExtBatVoltDeckPinSet)
-  {
-    voltage = analogReadVoltage(extBatVoltDeckPin) * extBatVoltMultiplier;
-  }
-  else
-  {
-    voltage = 0.0;
-  }
-
-  return voltage;
+  // esp-drone-lite: ADC removed, report a nominal single-cell voltage so
+  // that stabilizer prop test and pm LOG group keep a valid source.
+  return 3.7f;
 }
 
 bool pmIsBatteryLow(void) {
@@ -359,26 +318,23 @@ void pmTask(void *param)
         case charged:
           //ledseqStop(&seq_charging);
           //ledseqRunBlocking(&seq_charged);
-          soundSetEffect(SND_BAT_FULL);
+          // esp-drone-lite: buzzer/sound removed
           systemSetCanFly(false);
           break;
         case charging:
           //ledseqStop(&seq_lowbat);
           //ledseqStop(&seq_charged);
           ledseqRunBlocking(&seq_charging);
-          soundSetEffect(SND_USB_CONN);
           systemSetCanFly(false);
           break;
 
         case lowPower:
           ledseqRunBlocking(&seq_lowbat);
-          soundSetEffect(SND_BAT_LOW);
           systemSetCanFly(true);
           break;
         case battery:
           //ledseqRunBlocking(&seq_charging);
           //ledseqRun(&seq_charged);
-          soundSetEffect(SND_USB_DISC);
           systemSetCanFly(true);
           break;
         default:
